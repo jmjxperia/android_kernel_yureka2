@@ -1199,4 +1199,9 @@ config TOUCHSCREEN_ATMEL308U
 
 source "drivers/input/touchscreen/Atmel308U/Kconfig"
 
+config TOUCHSCREEN_GT915L
+	bool "Goodix touchpanel GT915L series"
+	depends on I2C
+    
+source "drivers/input/touchscreen/GT915L/Kconfig"
 endif

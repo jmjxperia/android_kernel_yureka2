@@ -340,6 +340,8 @@
 #define KEY_NEXTSONG_NEW        250
 #define KEY_PREVIOUSSONG_NEW    251
 
+#define KEY_GESTURE     	252
+
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
