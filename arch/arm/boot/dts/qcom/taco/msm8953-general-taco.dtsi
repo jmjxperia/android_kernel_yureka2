@@ -43,9 +43,9 @@
             qcom,resume-delta-mv = <50>;
             qcom,thermal-mitigation = <2000 1200 1000 800 800>;
             qcom,charge-unknown-battery;
-            /delete-property/ qcom,parallel-usb-min-current-ma;
-            /delete-property/ qcom,parallel-usb-9v-min-current-ma;
-            /delete-property/ qcom,parallel-allowed-lowering-ma;
+            qcom,parallel-usb-min-current-ma = <1400>;
+            qcom,parallel-usb-9v-min-current-ma = <900>;
+            qcom,parallel-allowed-lowering-ma = <500>;
             /delete-property/ qcom,chg-led-sw-controls;
             /delete-property/ qcom,chg-led-support;
             /delete-property/ qcom,external-typec;
@@ -436,19 +436,35 @@
 	};
 };
 
-
 &pm8953_gpios {
 	/* GPIO 2 (NFC_CLK_REQ)  qcom,pull = <0>; */
 	gpio@c100 {
-		qcom,mode = <0>;
-		qcom,output-type = <0>;
 		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
-		qcom,out-strength = <3>;
-		qcom,src-sel = <0>;
-		qcom,master-en = <1>;
 		qcom,dtest-sel = <1>; 
-		status = "okay";
+	};
+};
+
+&sdhc_1 {
+	/* emmc5.0 of hynix flash */
+	qcom,vdd-always-on;
+};
+
+&sdhc_2 {
+	cd-gpios = <&tlmm 133 0x0>;
+};
+
+&i2c_2 {
+	pericom-type-c@1d {
+		status="disabled";
+	};
+	/* Parallel-charger configuration */
+	smb1351-charger@1d {
+		compatible = "qcom,smb1351-charger";
+		reg = <0x1d>;
+		qcom,parallel-en-pin-polarity = <1>;
+		qcom,parallel-charger;
+		qcom,float-voltage-mv = <4400>;
+		qcom,recharge-mv = <100>;
 	};
 };
 
@@ -469,6 +485,12 @@
 		pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
 		clocks = <&clock_gcc clk_bb_clk2_pin>;
 		clock-names = "ref_clk";
+
+		/delete-node/ qcom,nq-irq;
+		/delete-node/ qcom,nq-ven;
+		/delete-node/ qcom,nq-firm;
+		/delete-node/ qcom,nq-clkreq;
+		/delete-node/ qcom,slc-src;
 	};
 };
 
