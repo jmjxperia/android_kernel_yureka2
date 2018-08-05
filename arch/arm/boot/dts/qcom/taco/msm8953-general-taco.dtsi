@@ -31,7 +31,6 @@
 				qcom,s2-type = <7>;
 		    };
 	    };
-		/delete-node/ qcom,pm8953_typec@bf00;
     };
     qcom,pm8953@1 {
         8953_wcd_codec@f100 {
@@ -43,14 +42,13 @@
             qcom,float-voltage-mv = <4400>;
             qcom,resume-delta-mv = <50>;
             qcom,charge-unknown-battery;
-            qcom,override-usb-current;
-            qcom,fastchg-current-comp = <1200>;
-            qcom,float-voltage-comp = <16>;
-            qcom,thermal-mitigation = <3000 2500 2000 2000 1000 500 0>;
+            qcom,thermal-mitigation = <2000 1600 1500 1200 1000>;
             qcom,parallel-usb-min-current-ma = <1400>;
             qcom,parallel-usb-9v-min-current-ma = <900>;
             qcom,parallel-allowed-lowering-ma = <500>;
+            qcom,autoadjust-vfloat;
             status = "okay";
+            /delete-property/ qcom,chg-inhibit-fg;
             /delete-property/ qcom,chg-led-sw-controls;
             /delete-property/ qcom,chg-led-support;
             /delete-property/ qcom,external-typec;
@@ -58,27 +56,33 @@
             /delete-property/ qcom,autoadjust-vfloat;
         };
         pmi8950_fg: qcom,fg {
-            qcom,resume-soc = <99>;
-            qcom,fg-cutoff-voltage-mv = <3400>;
-            qcom,fg-cc-cv-threshold-mv = <4380>;
+            qcom,fg-cutoff-voltage-mv = <3300>;
+            qcom,fg-cc-cv-threshold-mv = <4390>;
+            qcom,fg-chg-iterm-ma = <150>;
+            qcom,fg-iterm-ma = <200>;
             qcom,fg-vbat-estimate-diff-mv = <200>;
             qcom,thermal-coefficients = [DA 86 F0 50 08 3C];
-            qcom,cold-bat-decidegc = <0>;
-            qcom,cool-bat-decidegc = <150>;
+            qcom,cl-max-increment-deciperc = <1>;
+            qcom,cl-max-decrement-deciperc = <1>;
+            qcom,fg-delta-soc = <1>;
+            qcom,cold-hot-jeita-hysteresis = <50 70>;
+            qcom,bad-battery-detection-enable;
+            qcom,hold-soc-while-full;
+            qcom,cold-bat-decidegc = <-50>;
+            qcom,cool-bat-decidegc = <100>;
             qcom,warm-bat-decidegc = <450>;
-            qcom,fg-restore-batt-info;
+            qcom,hot-bat-decidegc = <570>;
+
+            /delete-property/ qcom,resume-soc;
         };
         qcom,leds@a100 {
             status = "okay";
-            compatible = "qcom,leds-qpnp";
-            reg = <0xa100 0x100>;
-            label = "mpp";
             qcom,led_mpp_2 {
 			label = "mpp";
 			linux,name = "button-backlight";
 			linux,default-trigger = "none";
 			qcom,default-state = "off";
-			qcom,max-current = <30>;
+			qcom,max-current = <40>;
 			qcom,current-setting = <3>;
 			qcom,id = <6>;
 			qcom,mode = "manual";
@@ -122,7 +126,7 @@
 				qcom,max-current = <200>;
 				qcom,id = <1>;
 				qcom,current = <100>;
- 			};
+            };
         };
     };
 };
@@ -460,6 +464,15 @@
 	};
 };
 
+/*audio bring up ,zhangjianming2.wt start*/
+&i2c_8  {
+	tfa9895@34 { /*tfa9895 */
+		compatible = "nxp,tfa9895";
+		reg = <0x34>;
+	};
+};
+/*audio bring up ,zhangjianming2.wt end*/
+
 &pm8953_gpios {
 	/* GPIO 2 (NFC_CLK_REQ)  qcom,pull = <0>; */
 	gpio@c100 {
@@ -510,11 +523,11 @@
 		clocks = <&clock_gcc clk_bb_clk2_pin>;
 		clock-names = "ref_clk";
 
-		/delete-node/ qcom,nq-irq;
-		/delete-node/ qcom,nq-ven;
-		/delete-node/ qcom,nq-firm;
-		/delete-node/ qcom,nq-clkreq;
-		/delete-node/ qcom,slc-src;
+		/delete-property/ qcom,nq-irq;
+		/delete-property/ qcom,nq-ven;
+		/delete-property/ qcom,nq-firm;
+		/delete-property/ qcom,nq-clkreq;
+		/delete-property/ qcom,slc-src;
 	};
 };
 
