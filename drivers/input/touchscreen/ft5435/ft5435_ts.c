@@ -1507,6 +1507,11 @@ static int ft5435_ts_resume(struct device *dev)
 		return 0;
 	}
 
+#if defined(FOCALTECH_TP_GESTURE)
+	if (gesture_func_on)
+		disable_irq(data->client->irq);
+#endif
+
 	/* release all touches */
 	input_mt_report_slot_state(data->input_dev, MT_TOOL_FINGER, 0);
 	input_sync(data->input_dev);
@@ -1522,8 +1527,8 @@ static int ft5435_ts_resume(struct device *dev)
 
 
 	ft5x0x_write_reg(data->client, 0x8c, 0x01);
-	data->suspended = false;
 	enable_irq(data->client->irq);
+	data->suspended = false;
 
 #if defined(USB_CHARGE_DETECT)
 	queue_work(ft5435_wq, &data->work);
