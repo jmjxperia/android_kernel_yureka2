@@ -508,26 +508,17 @@
 &i2c_5 { /* BLSP2 QUP1 (NFC) */
 	nq@28 {
 		compatible = "nxp,pn547";
-		reg = <0x28>;
 		nxp,irq-gpio = <&tlmm 17 0x00>;
 		nxp,ven-gpio = <&tlmm 16 0x00>;
 		nxp,firm-gpio = <&tlmm 62 0x00>;
 		nxp,clkreq-gpio = <&pm8953_gpios 2 0x00>;
-		interrupt-parent = <&tlmm>;
 		nxp,clk-src = "BBCLK2";
-		interrupts = <17 0>;
-		interrupt-names = "nfc_irq";
-		pinctrl-names = "nfc_active", "nfc_suspend";
-		pinctrl-0 = <&nfc_int_active &nfc_disable_active>;
-		pinctrl-1 = <&nfc_int_suspend &nfc_disable_suspend>;
-		clocks = <&clock_gcc clk_bb_clk2_pin>;
-		clock-names = "ref_clk";
 
 		/delete-property/ qcom,nq-irq;
 		/delete-property/ qcom,nq-ven;
 		/delete-property/ qcom,nq-firm;
 		/delete-property/ qcom,nq-clkreq;
-		/delete-property/ qcom,slc-src;
+		/delete-property/ qcom,clk-src;
 	};
 };
 
