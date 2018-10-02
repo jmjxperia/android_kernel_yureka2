@@ -1,5 +1,4 @@
 /* Copyright (c) 2014-2018 The Linux Foundation. All rights reserved.
- * Copyright (C) 2017 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -386,9 +385,9 @@ enum wake_reason {
 #define FAKE_BATTERY_EN_VOTER	"FAKE_BATTERY_EN_VOTER"
 
 /* battchg_enable_voters */
-/* userspace has disabled battery charging */
+	/* userspace has disabled battery charging */
 #define BATTCHG_USER_EN_VOTER	"BATTCHG_USER_EN_VOTER"
-/* battery charging disabled while loading battery profiles */
+	/* battery charging disabled while loading battery profiles */
 #define BATTCHG_UNKNOWN_BATTERY_EN_VOTER "BATTCHG_UNKNOWN_BATTERY_EN_VOTER"
 
 /* hw_aicl_rerun_enable_indirect_voters */
@@ -1075,21 +1074,6 @@ static int get_prop_batt_capacity(struct smbchg_chip *chip)
 		capacity = DEFAULT_BATT_CAPACITY;
 	}
 	return capacity;
-}
-
-static int get_prop_battery_charge_full_design(struct smbchg_chip *chip)
-{
-	union power_supply_propval ret = {0,};
-
-		if (chip->bms_psy) {
-			chip->bms_psy->get_property(chip->bms_psy,
-				  POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &ret);
-			return ret.intval;
-		} else {
-			pr_debug("No BMS supply registered return 0\n");
-		}
-
-		return 0;
 }
 
 #define DEFAULT_BATT_TEMP		200
@@ -4259,10 +4243,12 @@ static void smbchg_chg_led_brightness_set(struct led_classdev *cdev,
 	reg = (value > LED_OFF) ? CHG_LED_ON << CHG_LED_SHIFT :
 		CHG_LED_OFF << CHG_LED_SHIFT;
 
-	if (value > LED_OFF)
-		power_supply_set_hi_power_state(chip->bms_psy, 1);
-	else
-		power_supply_set_hi_power_state(chip->bms_psy, 0);
+	if (chip->bms_psy) {
+		if (value > LED_OFF)
+			power_supply_set_hi_power_state(chip->bms_psy, 1);
+		else
+			power_supply_set_hi_power_state(chip->bms_psy, 0);
+	}
 
 	pr_smb(PR_STATUS,
 			"set the charger led brightness to value=%d\n",
@@ -4305,11 +4291,16 @@ static void smbchg_chg_led_blink_set(struct smbchg_chip *chip,
 	u8 reg;
 	int rc;
 
+	if (chip->bms_psy) {
+		if (blinking == 0)
+			power_supply_set_hi_power_state(chip->bms_psy, 0);
+		else
+			power_supply_set_hi_power_state(chip->bms_psy, 1);
+	}
+
 	if (blinking == 0) {
 		reg = CHG_LED_OFF << CHG_LED_SHIFT;
-		power_supply_set_hi_power_state(chip->bms_psy, 0);
 	} else {
-		power_supply_set_hi_power_state(chip->bms_psy, 1);
 		if (blinking == 1)
 			reg = LED_BLINKING_PATTERN2 << CHG_LED_SHIFT;
 		else if (blinking == 2)
@@ -4910,13 +4901,27 @@ static int smbchg_restricted_charging(struct smbchg_chip *chip, bool enable)
 
 	return rc;
 }
+
+#ifdef CONFIG_MACH_XIAOMI_MIDO
 extern void ist30xx_set_ta_mode(bool mode);
 extern void tpd_usb_plugin(bool mode);
+extern void gtp_usb_plugin(bool mode);
+int set_usb_charge_mode_par = 0;
+#endif
 
 static void handle_usb_removal(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 	int rc;
+#ifdef CONFIG_MACH_XIAOMI_MIDO
+	if (set_usb_charge_mode_par == 1) {
+		ist30xx_set_ta_mode(0);
+	} else if (set_usb_charge_mode_par == 2) {
+		tpd_usb_plugin(0);
+	} else if (set_usb_charge_mode_par == 3) {
+		gtp_usb_plugin(0);
+	}
+#endif
 
 	pr_smb(PR_STATUS, "triggered\n");
 	smbchg_aicl_deglitch_wa_check(chip);
@@ -4929,12 +4934,13 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	/* cancel/wait for hvdcp pending work if any */
 	cancel_delayed_work_sync(&chip->hvdcp_det_work);
 	smbchg_relax(chip, PM_DETECT_HVDCP);
-	smbchg_change_usb_supply_type(chip, POWER_SUPPLY_TYPE_USB);
+	smbchg_change_usb_supply_type(chip, POWER_SUPPLY_TYPE_UNKNOWN);
 
 	if (chip->parallel.use_parallel_aicl) {
 		complete_all(&chip->hvdcp_det_done);
 		pr_smb(PR_MISC, "complete hvdcp_det_done\n");
 	}
+
 	if (!chip->skip_usb_notification) {
 		pr_smb(PR_MISC, "setting usb psy present = %d\n",
 				chip->usb_present);
@@ -4986,21 +4992,34 @@ static bool is_usbin_uv_high(struct smbchg_chip *chip)
 	return reg &= USBIN_UV_BIT;
 }
 
+#ifdef CONFIG_MACH_XIAOMI_MIDO
 static int rerun_apsd(struct smbchg_chip *chip);
+#endif
 #define HVDCP_NOTIFY_MS		2500
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
 	enum power_supply_type usb_supply_type;
 	int rc;
 	char *usb_type_name = "null";
-	
+
+#ifdef CONFIG_MACH_XIAOMI_MIDO
+	if (set_usb_charge_mode_par == 1) {
+		ist30xx_set_ta_mode(1);
+	} else if (set_usb_charge_mode_par == 2) {
+		tpd_usb_plugin(1);
+	} else if (set_usb_charge_mode_par == 3) {
+		gtp_usb_plugin(1);
+	}
+#endif
 	pr_smb(PR_STATUS, "triggered\n");
 	/* usb inserted */
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
+#ifdef CONFIG_MACH_XIAOMI_MIDO
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_CDP || usb_supply_type == POWER_SUPPLY_TYPE_USB) {
 		rc = rerun_apsd(chip);
 		read_usb_type(chip, &usb_type_name, &usb_supply_type);
 	}
+#endif
 	pr_smb(PR_STATUS,
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
 
@@ -6132,8 +6151,10 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				msecs_to_jiffies(HVDCP_NOTIFY_MS));
 	}
 
+#ifndef CONFIG_MACH_XIAOMI_MIDO
 	if (usb_supply_type != POWER_SUPPLY_TYPE_USB)
 		goto  skip_current_for_non_sdp;
+#endif
 
 	pr_smb(PR_MISC, "usb type = %s current_limit = %d\n",
 			usb_type_name, current_limit);
@@ -6143,8 +6164,10 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	if (rc < 0)
 		pr_err("Couldn't update USB PSY ICL vote rc=%d\n", rc);
 
+#ifndef CONFIG_MACH_XIAOMI_MIDO
 skip_current_for_non_sdp:
 	smbchg_vfloat_adjust_check(chip);
+#endif
 
 	power_supply_changed(&chip->batt_psy);
 }
@@ -6156,7 +6179,6 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_CAPACITY,
-	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
@@ -6204,7 +6226,6 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		rc = vote(chip->dc_suspend_votable, USER_EN_VOTER,
 				!val->intval, 0);
 		chip->chg_enabled = val->intval;
-		power_supply_changed(chip->usb_psy);
 		schedule_work(&chip->usb_set_online_work);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
@@ -6338,7 +6359,11 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = get_prop_batt_health(chip);
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
+#ifdef CONFIG_MACH_XIAOMI_MIDO
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LIPO;
+#else
+		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
+#endif
 		break;
 	case POWER_SUPPLY_PROP_FLASH_CURRENT_MAX:
 		val->intval = smbchg_calc_max_flash_current(chip);
@@ -6361,9 +6386,6 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	/* properties from fg */
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = get_prop_batt_capacity(chip);
-		break;
-	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = get_prop_battery_charge_full_design(chip);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_batt_current_now(chip);
@@ -6553,6 +6575,16 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+#ifdef CONFIG_MACH_XIAOMI_MIDO
+	int rc;
+	/* set the warm float voltage compensation,set the warm float voltage to 4.1V */
+	if (chip->float_voltage_comp != -EINVAL) {
+		rc = smbchg_float_voltage_comp_set(chip, chip->float_voltage_comp);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't set float voltage comp rc = %d\n", rc);
+	pr_smb(PR_STATUS, "set float voltage comp to %d\n", chip->float_voltage_comp);
+}
+#endif
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_warm = !!(reg & HOT_BAT_SOFT_BIT);
@@ -6569,6 +6601,15 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
+
+#ifdef CONFIG_MACH_XIAOMI_MIDO
+	int rc;
+	/* set the cool float voltage compensation ,set the cool float voltage to 4.4V*/
+	rc = smbchg_float_voltage_comp_set(chip, 0);
+	if (rc < 0)
+		dev_err(chip->dev, "Couldn't set float voltage comp rc = %d\n", rc);
+#endif
+
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_cool = !!(reg & COLD_BAT_SOFT_BIT);
@@ -7634,7 +7675,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		if (rc < 0)
 			dev_err(chip->dev, "Couldn't set OTG OC config rc = %d\n",
 				rc);
-
+#ifdef CONFIG_MACH_XIAOMI_MIDO
 		rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG, 0x0c, 0x8);
 		if (rc < 0) {
 			dev_err(chip->dev, "Couldn't set SMBCHGL_OTG_CFG rc=%d\n",
@@ -7647,6 +7688,7 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 			dev_err(chip->dev, "Couldn't set SMBCHGL_OTG_CFG rc=%d\n",
 				rc);
 		}
+#endif
 
 	}
 
@@ -8638,7 +8680,9 @@ static int smbchg_probe(struct spmi_device *spmi)
 		goto votables_cleanup;
 	}
 
+#ifdef CONFIG_MACH_XIAOMI_MIDO
 	chip->hvdcp_not_supported = true;
+#endif
 	rc = smbchg_check_chg_version(chip);
 	if (rc) {
 		pr_err("Unable to check schg version rc=%d\n", rc);
@@ -8763,7 +8807,6 @@ unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 out:
 	handle_usb_removal(chip);
-	return rc;
 votables_cleanup:
 	if (chip->aicl_deglitch_short_votable)
 		destroy_votable(chip->aicl_deglitch_short_votable);
