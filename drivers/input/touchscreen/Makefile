@@ -96,9 +96,5 @@ obj-$(CONFIG_TOUCHSCREEN_FT5435)        += ft5435/
 obj-$(CONFIG_TOUCHSCREEN_IST3038C)       += ist3038c/
 obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
 obj-$(CONFIG_TOUCHSCREEN_GT9XX_MIDO)    += gt9xx_mido/
-<<<<<<< HEAD
-obj-$(CONFIG_TOUCHSCREEN_STATE_NOTIFIER) += state_notifier.o
 obj-$(CONFIG_TOUCHSCREEN_GT915L)         += GT915L/
-=======
->>>>>>> 8edc364efcc0085c9507f8a119b144b28888314e
 obj-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET)	+= hxchipset/
