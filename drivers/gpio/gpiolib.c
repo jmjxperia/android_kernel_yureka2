@@ -1002,7 +1002,6 @@ static int _gpiod_direction_output_raw(struct gpio_desc *desc, int value)
 	struct gpio_chip	*chip;
 	int			status = -EINVAL;
 
-//other-TP, modified by wangdongbo.wt_20160506_for_GTP915L_resume&&suspend_will_update_soon
 	/* GPIOs used for IRQs shall not be set as output */
 #ifdef CONFIG_TOUCHSCREEN_GT9XX_MIDO
 	if ((special_irq == 1) && (gt9xx_flag == 1)) {
@@ -1015,19 +1014,8 @@ static int _gpiod_direction_output_raw(struct gpio_desc *desc, int value)
 					__func__);
 			return -EIO;
 		}
-<<<<<<< HEAD
 #ifdef CONFIG_TOUCHSCREEN_GT9XX_MIDO
-=======
 	}
-#else
-/*	if (test_bit(FLAG_USED_AS_IRQ, &desc->flags)) {
-		gpiod_err(desc,
-			  "%s: tried to set a GPIO tied to an IRQ as output\n",
-			  __func__);
-		return -EIO;
->>>>>>> 6b2dbb071848... Fix build error && touchscreen not working
-	}
-*/
 #endif
 
 	/* Open drain pin should not be driven to 1 */
