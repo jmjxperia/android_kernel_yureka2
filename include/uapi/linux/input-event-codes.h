@@ -344,14 +344,8 @@
 
 #define KEY_MICMUTE		248	/* Mute / unmute the microphone */
 
-<<<<<<< HEAD
-=======
-#define KEY_NEXTSONG_NEW        250
-#define KEY_PREVIOUSSONG_NEW    251
-
 #define KEY_GESTURE     	252
 
->>>>>>> 38279b24d65f... taco: import dts & drivers
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
 #define BTN_MISC		0x100
