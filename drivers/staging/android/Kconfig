@@ -146,6 +146,13 @@ config SYNC_DEBUG
 	  This makes the sync driver keep track of fence names.
 
 
+config SYNC_DEBUG
+	bool "Debug software synchronization"
+	default n
+	depends on SYNC
+	---help---
+	  This makes the sync driver keep track of fence names.
+
 source "drivers/staging/android/ion/Kconfig"
 
 source "drivers/staging/android/fiq_debugger/Kconfig"
