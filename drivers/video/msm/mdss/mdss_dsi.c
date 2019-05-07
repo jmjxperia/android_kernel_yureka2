@@ -3395,6 +3395,9 @@ PM_QOS_DEFAULT_VALUE);
 	pm_qos_add_request(&ctrl_pdata->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
 PM_QOS_DEFAULT_VALUE);
 
+	pm_qos_add_request(&ctrl_pdata->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+PM_QOS_DEFAULT_VALUE);
+
 	rc = dsi_panel_device_register(pdev, dsi_pan_node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s: dsi panel dev reg failed\n", __func__);
