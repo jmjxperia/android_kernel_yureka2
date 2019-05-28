@@ -24,7 +24,6 @@
  *
  *
  * Copyright (c) 2015 Fingerprint Cards AB <tech@fingerprints.com>
- * Copyright (C) 2017 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License Version 2
@@ -55,7 +54,7 @@
 #define NUM_PARAMS_REG_ENABLE_SET 2
 
 static const char * const pctl_names[] = {
-
+	//"fpc1020_spi_active",
 	"fpc1020_reset_reset",
 	"fpc1020_reset_active",
 	"fpc1020_irq_active",
@@ -89,6 +88,7 @@ static int fpc1020_request_named_gpio(struct fpc1020_data *fpc1020,
 		const char *label, int *gpio);
 static int hw_reset(struct  fpc1020_data *fpc1020);
 
+	
 #ifdef LINUX_CONTROL_SPI_CLK
 static int set_clks(struct fpc1020_data *fpc1020, bool enable)
 {
@@ -315,7 +315,7 @@ static DEVICE_ATTR(wakeup_enable, S_IWUSR, NULL, wakeup_enable_set);
  */
 static ssize_t irq_get(struct device *device,
 			     struct device_attribute *attribute,
-			     char *buffer)
+			     char* buffer)
 {
 	struct fpc1020_data *fpc1020 = dev_get_drvdata(device);
 	int irq = gpio_get_value(fpc1020->irq_gpio);
@@ -337,7 +337,7 @@ static ssize_t irq_ack(struct device *device,
 }
 
 static DEVICE_ATTR(irq, S_IRUSR | S_IWUSR, irq_get, irq_ack);
-
+//xuchao@wt and the fingerprint compatible start,20160415
 static ssize_t compatible_all_set(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -345,8 +345,8 @@ static ssize_t compatible_all_set(struct device *dev,
 	int i;
 	int irqf;
 	struct  fpc1020_data *fpc1020 = dev_get_drvdata(dev);
-	dev_err(dev, "compatible all enter %d\n", fpc1020->compatible_enabled);
-	if (!strncmp(buf, "enable", strlen("enable")) && fpc1020->compatible_enabled != 1) {
+	dev_err(dev, "compatible all enter %d\n", fpc1020->compatible_enabled);	
+	if(!strncmp(buf, "enable", strlen("enable")) && fpc1020->compatible_enabled != 1){
 		rc = fpc1020_request_named_gpio(fpc1020, "fpc,gpio_irq",
 			&fpc1020->irq_gpio);
 		if (rc)
@@ -412,30 +412,29 @@ static ssize_t compatible_all_set(struct device *dev,
 		(void)set_clks(fpc1020, false);
 #endif
 	}
-	} else if (!strncmp(buf, "disable", strlen("disable")) && fpc1020->compatible_enabled != 0) {
-		if (gpio_is_valid(fpc1020->irq_gpio)) {
+	}else if(!strncmp(buf, "disable", strlen("disable")) && fpc1020->compatible_enabled != 0){
+		if (gpio_is_valid(fpc1020->irq_gpio))
+		{
 			devm_gpio_free(dev, fpc1020->irq_gpio);
 			pr_info("remove irq_gpio success\n");
 		}
-		if (gpio_is_valid(fpc1020->rst_gpio)) {
+		if (gpio_is_valid(fpc1020->rst_gpio))
+		{
 			devm_gpio_free(dev, fpc1020->rst_gpio);
 			pr_info("remove rst_gpio success\n");
 		}
 		devm_free_irq(dev, gpio_to_irq(fpc1020->irq_gpio), fpc1020);
 		fpc1020->compatible_enabled = 0;
-#ifdef CONFIG_MACH_XIAOMI_MARKW
-	}else
-		goto exit;
-#else
 	}
-#endif
+	else
+		goto exit;//bug178014, lanchunjia.wt, modify, 20160523
 	hw_reset(fpc1020);
 	return count;
 exit:
 	return -EINVAL;
 }
 static DEVICE_ATTR(compatible_all, S_IWUSR, NULL, compatible_all_set);
-
+//xuchao@wt and the fingerprint compatible end,20160415
 static struct attribute *attributes[] = {
 	&dev_attr_pinctl_set.attr,
 	&dev_attr_spi_prepare.attr,
@@ -496,9 +495,10 @@ static int fpc1020_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	int rc = 0;
-
+	//size_t i;
 	struct device_node *np = dev->of_node;
-
+        int gpio_ldo=0;
+		
 	struct fpc1020_data *fpc1020 = devm_kzalloc(dev, sizeof(*fpc1020),
 			GFP_KERNEL);
 	if (!fpc1020) {
@@ -516,6 +516,11 @@ static int fpc1020_probe(struct platform_device *pdev)
 		rc = -EINVAL;
 		goto exit;
 	}
+
+if(fpc1020_request_named_gpio(fpc1020, "fpc,gpio_1do",&gpio_ldo)==0){
+       gpio_direction_output(gpio_ldo,1);
+	devm_gpio_free(dev,gpio_ldo);
+}
 
 
 #ifdef LINUX_CONTROL_SPI_CLK
@@ -538,6 +543,11 @@ static int fpc1020_probe(struct platform_device *pdev)
 		goto exit;
 	}
 #endif
+
+//	rc = select_pin_ctl(fpc1020, "fpc1020_spi_active");
+	//if (rc)
+	//	goto exit;
+		
 
 	fpc1020->wakeup_enabled = false;
 #ifdef LINUX_CONTROL_SPI_CLK
@@ -598,11 +608,7 @@ static const struct dev_pm_ops fpc1020_pm_ops = {
 #endif
 
 static struct of_device_id fpc1020_of_match[] = {
-#ifdef CONFIG_MACH_XIAOMI_MARKW
 	{ .compatible = "soc:fpc1020", },
-#else
-	{ .compatible = "fpc,fpc1020", },
-#endif
 	{}
 };
 MODULE_DEVICE_TABLE(of, fpc1020_of_match);
