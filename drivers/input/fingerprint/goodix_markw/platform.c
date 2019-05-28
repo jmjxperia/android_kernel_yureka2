@@ -20,7 +20,7 @@
 		} while (0)
 
 
-static int gf3208_request_named_gpio(struct gf_dev *gf_dev, const char *label, int *gpio)
+static int gf3208_request_named_gpio(struct gf_dev *gf_dev,const char *label, int *gpio)
 {
 	struct device *dev = &gf_dev->spi->dev;
 	struct device_node *np = dev->of_node;
@@ -44,12 +44,12 @@ static int select_pin_ctl(struct gf_dev *gf_dev, const char *name)
 	size_t i;
 	int rc;
 	struct device *dev = &gf_dev->spi->dev;
-
+	
 	for (i = 0; i < ARRAY_SIZE(gf_dev->pinctrl_state); i++) {
 		const char *n = pctl_names[i];
 		if (!strncmp(n, name, strlen(n))) {
-			rc = pinctrl_select_state(gf_dev->fingerprint_pinctrl, gf_dev->pinctrl_state[i]);
-
+			rc = pinctrl_select_state(gf_dev->fingerprint_pinctrl,gf_dev->pinctrl_state[i]);
+				
 			if (rc)
 				dev_err(dev, "cannot select '%s'\n", name);
 			else
@@ -65,30 +65,32 @@ exit:
 
 
 /*GPIO pins reference.*/
-int gf_parse_dts(struct gf_dev *gf_dev)
+int gf_parse_dts(struct gf_dev* gf_dev)
 {
-	int rc = 0;
-	int i = 0;
-	pr_warn("--------gf_parse_dts start.--------\n");
+ 	int rc = 0;
+ 	int i = 0;
+    	pr_warn("--------gf_parse_dts start.--------\n");
+    
+    /*get reset resource*/
+	rc = gf3208_request_named_gpio(gf_dev,"goodix,gpio_reset",&gf_dev->reset_gpio);
+    	if(rc) {
+        	//dev_err(&gf_dev->spi->dev, "Failed to request RESET GPIO. rc = %d\n", rc);
+                gf_dbg("Failed to request RESET GPIO. rc = %d\n", rc);
+		return -1;
+    	}
+    	//gpio_direction_output(gf_dev->reset_gpio, 1);
 
-	/*get reset resource*/
-	rc = gf3208_request_named_gpio(gf_dev, "goodix,gpio_reset", &gf_dev->reset_gpio);
-	if (rc) {
-		gf_dbg("Failed to request RESET GPIO. rc = %d\n", rc);
-		return -EPERM;
-	}
-
-	/*get irq resourece*/
-	rc = gf3208_request_named_gpio(gf_dev, "goodix,gpio_irq", &gf_dev->irq_gpio);
-	if (rc) {
-
+    /*get irq resourece*/
+    	rc = gf3208_request_named_gpio(gf_dev,"goodix,gpio_irq",&gf_dev->irq_gpio);
+    	if(rc) {
+        	//dev_err(&gf_dev->spi->dev, "Failed to request IRQ GPIO. rc = %d\n", rc);
 		gf_dbg("Failed to request IRQ GPIO. rc = %d\n", rc);
-		return -EPERM;
-	}
+		return -1;
+    	}
+    	//gpio_direction_input(gf_dev->irq_gpio);	
 
-
-		gf_dev->fingerprint_pinctrl = devm_pinctrl_get(&gf_dev->spi->dev);
-	for (i = 0; i < ARRAY_SIZE(gf_dev->pinctrl_state); i++) {
+    	gf_dev->fingerprint_pinctrl = devm_pinctrl_get(&gf_dev->spi->dev);
+   	for (i = 0; i < ARRAY_SIZE(gf_dev->pinctrl_state); i++) {
 		const char *n = pctl_names[i];
 		struct pinctrl_state *state =
 			pinctrl_lookup_state(gf_dev->fingerprint_pinctrl, n);
@@ -99,7 +101,7 @@ int gf_parse_dts(struct gf_dev *gf_dev)
 		pr_info("found pin control %s\n", n);
 		gf_dev->pinctrl_state[i] = state;
 	}
-
+	
 	 rc = select_pin_ctl(gf_dev, "goodixfp_reset_active");
 	if (rc)
 		goto exit;
@@ -107,57 +109,80 @@ int gf_parse_dts(struct gf_dev *gf_dev)
 	if (rc)
 		goto exit;
 
-	pr_warn("--------gf_parse_dts end---OK.--------\n");
+	
+//rc = pinctrl_select_state(gf_dev->fingerprint_pinctrl,pctl_names[1]);
+	
+    	pr_warn("--------gf_parse_dts end---OK.--------\n");
 
 exit:
 	 return rc;
-
+	 
+    	//return 0;
 }
 
-void gf_cleanup(struct gf_dev	*gf_dev)
+void gf_cleanup(struct gf_dev	* gf_dev)
 {
-	gf_dbg("[info]  enter%s\n", __func__);
+    gf_dbg("[info]  enter%s\n",__func__);
 
-	if (gpio_is_valid(gf_dev->irq_gpio)) {
-		devm_gpio_free(&gf_dev->spi->dev, gf_dev->irq_gpio);
-		gf_dbg("remove irq_gpio success\n");
+    if (gpio_is_valid(gf_dev->irq_gpio))
+    {
+       
+        devm_gpio_free(&gf_dev->spi->dev,gf_dev->irq_gpio);
+        gf_dbg("remove irq_gpio success\n");
+    }
+ 
+    if (gpio_is_valid(gf_dev->reset_gpio))
+    {
+        //gpio_free(gf_dev->reset_gpio);
+        devm_gpio_free(&gf_dev->spi->dev,gf_dev->reset_gpio);
+        gf_dbg("remove reset_gpio success\n");
+    }
+	
+	if (gf_dev->fingerprint_pinctrl != NULL){
+  	  	devm_pinctrl_put(gf_dev->fingerprint_pinctrl);
+		gf_dev->fingerprint_pinctrl=NULL;
+		
+		 gf_dbg("gx  fingerprint_pinctrl  release success\n");
 	}
-
-	if (gpio_is_valid(gf_dev->reset_gpio)) {
-
-		devm_gpio_free(&gf_dev->spi->dev, gf_dev->reset_gpio);
-		gf_dbg("remove reset_gpio success\n");
-	}
-
-	if (gf_dev->fingerprint_pinctrl != NULL) {
-		devm_pinctrl_put(gf_dev->fingerprint_pinctrl);
-		gf_dev->fingerprint_pinctrl = NULL;
-
-		gf_dbg("gx  fingerprint_pinctrl  release success\n");
-	}
+/*    if (gpio_is_valid(gf_dev->pwr_gpio))
+    {
+        gpio_free(gf_dev->pwr_gpio);
+        pr_info("remove pwr_gpio success\n");
+    }   */
 }
 
 /*power management*/
-int gf_power_on(struct gf_dev *gf_dev)
+int gf_power_on(struct gf_dev* gf_dev)
 {
-	int rc = 0;
-	msleep(10);
-	pr_info("---- power on ok ----\n");
+    int rc = 0;
+/*    if (gpio_is_valid(gf_dev->pwr_gpio)) {
+        gpio_set_value(gf_dev->pwr_gpio, 1);
+    }  */
+    msleep(10);
+    pr_info("---- power on ok ----\n");
 
-	return rc;
+    return rc;
 }
 
-int gf_power_off(struct gf_dev *gf_dev)
+int gf_power_off(struct gf_dev* gf_dev)
 {
-	int rc = 0;
-	pr_info("---- power off ----\n");
-	return rc;
+    int rc = 0;			
+/*    if (gpio_is_valid(gf_dev->pwr_gpio)) {
+        gpio_set_value(gf_dev->pwr_gpio, 1);
+    }  */
+    pr_info("---- power off ----\n");
+    return rc;
 }
 
 static int hw_reset(struct  gf_dev *gf_dev)
 {
 	int irq_gpio;
 	struct device *dev = &gf_dev->spi->dev;
+	
+//	int rc = select_pin_ctl(gf_dev, "goodixfp_reset_active");
+//	if (rc)
+//		goto exit;	
+//	 mdelay(3);
 
 	int rc = select_pin_ctl(gf_dev, "goodixfp_reset_reset");
 	if (rc)
@@ -167,7 +192,7 @@ static int hw_reset(struct  gf_dev *gf_dev)
 	rc = select_pin_ctl(gf_dev, "goodixfp_reset_active");
 	if (rc)
 		goto exit;
-
+//	 mdelay(3);
 	irq_gpio = gpio_get_value(gf_dev->irq_gpio);
 	dev_info(dev, "IRQ after reset %d\n", irq_gpio);
 exit:
@@ -180,23 +205,23 @@ exit:
  *Take care of this function. IO Pin driver strength / glitch and so on.
  ********************************************************************/
 int gf_hw_reset(struct gf_dev *gf_dev, unsigned int delay_ms)
-{
-	if (gf_dev == NULL) {
-		pr_info("Input buff is NULL.\n");
-		return -EPERM;
-	}
-	hw_reset(gf_dev);
-	mdelay(delay_ms);
-	return 0;
+{	
+    if(gf_dev == NULL) {
+        pr_info("Input buff is NULL.\n");
+        return -1;
+    }
+    hw_reset(gf_dev);
+    mdelay(delay_ms);
+    return 0;
 }
 
 int gf_irq_num(struct gf_dev *gf_dev)
 {
-	if (gf_dev == NULL) {
-		pr_info("Input buff is NULL.\n");
-		return -EPERM;
-	} else {
-		return gpio_to_irq(gf_dev->irq_gpio);
-	}
+    if(gf_dev == NULL) {
+        pr_info("Input buff is NULL.\n");
+        return -1;
+    } else {
+        return gpio_to_irq(gf_dev->irq_gpio);
+    }
 }
 

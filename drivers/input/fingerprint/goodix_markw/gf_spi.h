@@ -19,7 +19,8 @@ struct gf_key {
 };
 
 
-struct gf_key_map {
+struct gf_key_map
+{
     char *name;
     unsigned short val;
 };
@@ -41,10 +42,10 @@ struct gf_key_map {
 
 #define  GF_IOC_MAXNR    13
 
-
+//#define AP_CONTROL_CLK       1
 #define  USE_PLATFORM_BUS     1
-
-
+//#define  USE_SPI_BUS	1
+//#define GF_FASYNC   1	/*If support fasync mechanism.*/
 #define GF_NETLINK_ENABLE 1
 #define GF_NET_EVENT_IRQ 0
 #define GF_NET_EVENT_FB_BLACK 1
@@ -52,7 +53,7 @@ struct gf_key_map {
 
 
 static const char * const pctl_names[] = {
-
+//	"goodixfp_spi_active",
 	"goodixfp_reset_reset",
 	"goodixfp_reset_active",
 	"goodixfp_irq_active",
@@ -72,7 +73,7 @@ struct gf_dev {
 
 	struct pinctrl *fingerprint_pinctrl;
 	struct pinctrl_state *pinctrl_state[ARRAY_SIZE(pctl_names)];
-
+	
 	struct input_dev *input;
 	/* buffer is NULL unless this device is open (users > 0) */
 	unsigned users;
@@ -91,7 +92,7 @@ struct gf_dev {
 	struct wake_lock ttw_wl;
 };
 
-int gf_parse_dts(struct gf_dev *gf_dev);
+int gf_parse_dts(struct gf_dev* gf_dev);
 void gf_cleanup(struct gf_dev *gf_dev);
 
 int gf_power_on(struct gf_dev *gf_dev);
