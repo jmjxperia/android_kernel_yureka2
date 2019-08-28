@@ -1,3 +1,3 @@
 #Atmel touchpanel driver
 
-obj-y	+= atmel_mxt_ts.o
+obj-y	+= atmel_mxt_ts.o 

@@ -30,16 +30,11 @@
 #define MXT_KEYARRAY_MAX_KEYS		32
 #define CTP_PROC_INTERFACE                    1
 #define WT_ADD_CTP_INFO                           1
-#define KEYCODE_WAKEUP                    143
+
 /*TP Color*/
 #define TP_White      0x31
 #define  TP_Black      0x32
 #define  TP_Golden    0x38
-#define FHD_KEY_Y                          2000
-#define FHD_MENU_KEY_X              180
-#define FHD_HOME_KEY_X              540
-#define FHD_BACK_KEY_X              900
-int fhd_key_dim_x[] = { 0, FHD_MENU_KEY_X, FHD_HOME_KEY_X, FHD_BACK_KEY_X, };
 
 /*IC Maker*/
 #define TP_BIEL        0x31
@@ -55,7 +50,7 @@ struct mxt_config_info {
 	u8 panel_id;
 	u8 rev_id;
 	/* Points to the firmware name to be upgraded to */
-	const char *mxt_cfg_name;
+	const char* mxt_cfg_name;
 	int *key_codes;
 	int key_num;
 	u8 selfintthr_stylus;
@@ -74,7 +69,7 @@ struct mxt_config_info {
 /* The platform data for the Atmel maXTouch touchscreen driver */
 struct mxt_platform_data {
 	struct mxt_config_info *config_array;
-	const char *mxt_fw_name;
+	const char* mxt_fw_name;
 	size_t config_array_size;
 	unsigned long irqflags;
 	int reset_gpio;
@@ -94,12 +89,12 @@ int mxt_register_glove_mode_notifier(struct notifier_block *nb);
 int mxt_unregister_glove_mode_notifier(struct notifier_block *nb);
 
 #define CTP_DEBUG_ON 1
-#define CTP_DEBUG(fmt, arg...)	do {\
-		if (CTP_DEBUG_ON)\
-			printk("Atmel-308U:[%d]"fmt"\n", __LINE__, ##arg);\
-		} while (0)
+#define CTP_DEBUG(fmt,arg...)          do{\
+                                         if(CTP_DEBUG_ON)\
+                                         printk("Atmel-308U:[%d]"fmt"\n",__LINE__, ##arg);\
+                                       }while(0)
 
-#define CTP_INFO(fmt, arg...)           printk("ATMEL-TP-TAG-INFO:"fmt"\n", ##arg)
-#define CTP_ERROR(fmt, arg...)          printk("ATMEL-TP-TAG ERROR:"fmt"\n", ##arg)
+#define CTP_INFO(fmt,arg...)           printk("ATMEL-TP-TAG-INFO:"fmt"\n",##arg)
+#define CTP_ERROR(fmt,arg...)          printk("ATMEL-TP-TAG ERROR:"fmt"\n",##arg)
 #endif /* __LINUX_ATMEL_MXT_TS_H */
 
