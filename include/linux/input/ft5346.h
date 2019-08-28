@@ -4,7 +4,6 @@
  *
  * Copyright (c) 2010  Focal tech Ltd.
  * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
- * Copyright (C) 2017 XiaoMi, Inc.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -61,7 +60,7 @@
 
 /*Firmware vendors*/
 #define VENDOR_O_FILM		0x51
-#define VENDOR_BIEL	0x3B
+#define VENDOR_Lens	0x3B
 
 /*IC name*/
 #define IC_FT5X06               0x55
@@ -80,20 +79,14 @@
 #define TP_White      0x31
 #define  TP_Black      0x32
 #define  TP_Golden    0x38
-#define  TP_ERROR_COLOR    0x53
-
 
 /*TP Maker*/
 #define TP_OUFEI      0x34
 #define  TP_LENS      0x32
 
-#define TP_BIEL       0x31
-
 /*LCD Maker*/
 #define TP_TIANMA      0x36
-
-#define TP_EBBG         0x37
-
+//#define  TP_LENS      0x32
 
 /* power register bits*/
 #define FT_PMODE_ACTIVE     0x00
@@ -153,12 +146,12 @@
 * make sure the application data is valid.
 */
 #define FT_FW_CHECK(x, ts_data) \
-	(ts_data->family_id == FT6X36_ID ? \
-	(((x)->data[0x104] ^ (x)->data[0x105]) == 0xFF \
-	&& ((x)->data[0x106] ^ (x)->data[0x107]) == 0xFF) : \
-	(((x)->data[(x)->size - 8] ^ (x)->data[(x)->size - 6]) == 0xFF \
-	&& ((x)->data[(x)->size - 7] ^ (x)->data[(x)->size - 5]) == 0xFF \
-	&& ((x)->data[(x)->size - 3] ^ (x)->data[(x)->size - 4]) == 0xFF))
+    (ts_data->family_id == FT6X36_ID ? \
+    (((x)->data[0x104] ^ (x)->data[0x105]) == 0xFF \
+    && ((x)->data[0x106] ^ (x)->data[0x107]) == 0xFF) : \
+    (((x)->data[(x)->size - 8] ^ (x)->data[(x)->size - 6]) == 0xFF \
+    && ((x)->data[(x)->size - 7] ^ (x)->data[(x)->size - 5]) == 0xFF \
+    && ((x)->data[(x)->size - 3] ^ (x)->data[(x)->size - 4]) == 0xFF))
 
 #define FT_MAX_TRIES        5
 #define FT_RETRY_DLY        20
@@ -195,150 +188,180 @@
 #define FT_MAGIC_BLOADER_GZF_30 0x7ff4
 #define FT_MAGIC_BLOADER_GZF    0x7bf4
 
-enum {
-	FT_BLOADER_VERSION_LZ4 = 0,
-	FT_BLOADER_VERSION_Z7 = 1,
-	FT_BLOADER_VERSION_GZF = 2,
+enum
+{
+    FT_BLOADER_VERSION_LZ4 = 0,
+    FT_BLOADER_VERSION_Z7 = 1,
+    FT_BLOADER_VERSION_GZF = 2,
 };
 
-enum {
-	FT_FT5336_FAMILY_ID_0x11 = 0x11,
-	FT_FT5336_FAMILY_ID_0x12 = 0x12,
-	FT_FT5336_FAMILY_ID_0x13 = 0x13,
-	FT_FT5336_FAMILY_ID_0x14 = 0x14,
+enum
+{
+    FT_FT5336_FAMILY_ID_0x11 = 0x11,
+    FT_FT5336_FAMILY_ID_0x12 = 0x12,
+    FT_FT5336_FAMILY_ID_0x13 = 0x13,
+    FT_FT5336_FAMILY_ID_0x14 = 0x14,
 };
 
-struct fw_upgrade_info {
-	bool auto_cal;
-	u16 delay_aa;
-	u16 delay_55;
-	u8 upgrade_id_1;
-	u8 upgrade_id_2;
-	u16 delay_readid;
-	u16 delay_erase_flash;
+struct fw_upgrade_info
+{
+    bool auto_cal;
+    u16 delay_aa;
+    u16 delay_55;
+    u8 upgrade_id_1;
+    u8 upgrade_id_2;
+    u16 delay_readid;
+    u16 delay_erase_flash;
 };
 
-struct Upgrade_Info {
-	u8 CHIP_ID;
-	u8 FTS_NAME[20];
-	u8 TPD_MAX_POINTS;
-	u8 AUTO_CLB;
-	u16 delay_aa;       /*delay of write FT_UPGRADE_AA */
-	u16 delay_55;       /*delay of write FT_UPGRADE_55 */
-	u8 upgrade_id_1;    /*upgrade id 1 */
-	u8 upgrade_id_2;    /*upgrade id 2 */
-	u16 delay_readid;   /*delay of read id */
-	u16 delay_earse_flash; /*delay of earse flash*/
+struct Upgrade_Info
+{
+    u8 CHIP_ID;
+    u8 FTS_NAME[20];
+    u8 TPD_MAX_POINTS;
+    u8 AUTO_CLB;
+    u16 delay_aa;       /*delay of write FT_UPGRADE_AA */
+    u16 delay_55;       /*delay of write FT_UPGRADE_55 */
+    u8 upgrade_id_1;    /*upgrade id 1 */
+    u8 upgrade_id_2;    /*upgrade id 2 */
+    u16 delay_readid;   /*delay of read id */
+    u16 delay_earse_flash; /*delay of earse flash*/
 };
 
 
-struct ft5x06_ts_platform_data {
-	struct fw_upgrade_info info;
-	const char *name;
-	const char *fw_name;
-	u32 irqflags;
-	u32 irq_gpio;
-	u32 irq_gpio_flags;
-	u32 reset_gpio;
-	u32 reset_gpio_flags;
-	u32 family_id;
-	u32 x_max;
-	u32 y_max;
-	u32 x_min;
-	u32 y_min;
-	u32 panel_minx;
-	u32 panel_miny;
-	u32 panel_maxx;
-	u32 panel_maxy;
-	u32 group_id;
-	u32 hard_rst_dly;
-	u32 soft_rst_dly;
-	u32 num_max_touches;
-	bool fw_vkey_support;
-	bool no_force_update;
-	bool i2c_pull_up;
-	bool ignore_id_check;
-	int (*power_init) (bool);
-	int (*power_on) (bool);
+struct ft5x06_ts_platform_data
+{
+    struct fw_upgrade_info info;
+    const char *name;
+    const char *fw_name;
+    u32 irqflags;
+    u32 irq_gpio;
+    u32 irq_gpio_flags;
+    u32 reset_gpio;
+    u32 reset_gpio_flags;
+    u32 family_id;
+    u32 x_max;
+    u32 y_max;
+    u32 x_min;
+    u32 y_min;
+    u32 panel_minx;
+    u32 panel_miny;
+    u32 panel_maxx;
+    u32 panel_maxy;
+    u32 group_id;
+    u32 hard_rst_dly;
+    u32 soft_rst_dly;
+    u32 num_max_touches;
+    bool fw_vkey_support;
+    bool no_force_update;
+    bool i2c_pull_up;
+    bool ignore_id_check;
+    int (*power_init) (bool);
+    int (*power_on) (bool);
 };
 
-struct ft5x06_ts_data {
-	struct i2c_client *client;
-	struct input_dev *input_dev;
-	const struct ft5x06_ts_platform_data *pdata;
-	struct regulator *vdd;
-	struct regulator *vcc_i2c;
-	char fw_name[FT_FW_NAME_MAX_LEN];
-	u8 lockdown_info[FT_LOCKDOWN_SIZE];
-	bool loading_fw;
-	u8 family_id;
-	struct dentry *dir;
-	u16 addr;
-	bool suspended;
-	char *ts_info;
-	u8 *tch_data;
-	u32 tch_data_len;
-	u8 fw_ver[3];
-	u8 fw_vendor_id;
+struct ft5x06_ts_data
+{
+    struct i2c_client *client;
+    struct input_dev *input_dev;
+    const struct ft5x06_ts_platform_data *pdata;
+    struct regulator *vdd;
+    struct regulator *vcc_i2c;
+    char fw_name[FT_FW_NAME_MAX_LEN];
+    u8 lockdown_info[FT_LOCKDOWN_SIZE];
+    bool loading_fw;
+    u8 family_id;
+    struct dentry *dir;
+    u16 addr;
+    bool suspended;
+    char *ts_info;
+    u8 *tch_data;
+    u32 tch_data_len;
+    u8 fw_ver[3];
+    u8 fw_vendor_id;
 #if defined(CONFIG_FB)
-	struct notifier_block fb_notif;
+    struct notifier_block fb_notif;
 	struct work_struct fb_notify_work;
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
+    struct early_suspend early_suspend;
 #endif
-	struct pinctrl *ts_pinctrl;
-	struct pinctrl_state *gpio_state_active;
-	struct pinctrl_state *gpio_state_suspend;
+    struct pinctrl *ts_pinctrl;
+    struct pinctrl_state *gpio_state_active;
+    struct pinctrl_state *gpio_state_suspend;
 };
 
-
-
-#define CTP_IC_TYPE_0 0x12
-#define CTP_IC_TYPE_1 0x14
-#define CTP_IC_TYPE_2 0x54
+//---------------------------------//
+//---------MACRO CONTROL---------//
+#define CTP_IC_TYPE_0 0x12 //lenovo project
+#define CTP_IC_TYPE_1 0x14 //xiaomi project
+#define CTP_IC_TYPE_2 0x54 //N2 project (FT5x46)
 
 #define CTP_SYS_APK_UPDATE 0
 
 #define TPD_AUTO_UPGRADE 1
 #define FTS_PROC_APK_DEBUG 1
-
-#define CTP_CHARGER_DETECT 1
-
+#define CTP_CHARGER_DETECT 0
 #define CTP_PROC_INTERFACE 1
-#define CTP_LOCKDOWN_INFO  1
-
-
 #define WT_ADD_CTP_INFO   1
-#define WT_CTP_GESTURE_SUPPORT 1
-#define KEYCODE_WAKEUP 143
 
-#define MXT_INPUT_EVENT_START			0
-#define MXT_INPUT_EVENT_SENSITIVE_MODE_OFF	0
-#define MXT_INPUT_EVENT_SENSITIVE_MODE_ON	1
-#define MXT_INPUT_EVENT_STYLUS_MODE_OFF		2
-#define MXT_INPUT_EVENT_STYLUS_MODE_ON		3
-#define MXT_INPUT_EVENT_WAKUP_MODE_OFF		4
-#define MXT_INPUT_EVENT_WAKUP_MODE_ON		5
-#define MXT_INPUT_EVENT_EDGE_DISABLE		6
-#define MXT_INPUT_EVENT_EDGE_FINGER		7
-#define MXT_INPUT_EVENT_EDGE_HANDGRIP		8
-#define MXT_INPUT_EVENT_EDGE_FINGER_HANDGRIP	9
-#define MXT_INPUT_EVENT_END			9
+/*Gesture*/
+#define WT_CTP_GESTURE_SUPPORT   1
 
-#define CTP_DEBUG_ON 0
+#if WT_CTP_GESTURE_SUPPORT
+#define FTS_GESTRUE_POINTS 				255
+#define FTS_GESTRUE_POINTS_ONETIME  		62
+#define FTS_GESTRUE_POINTS_HEADER 		8
+#define FTS_GESTURE_OUTPUT_ADRESS 		0xD3
+#define FTS_GESTURE_OUTPUT_UNIT_LENGTH 	4
+
+#define KEY_GESTURE_U 						KEY_U
+#define KEY_GESTURE_UP 						KEY_UP
+#define KEY_GESTURE_DOWN 					KEY_DOWN
+#define KEY_GESTURE_LEFT 					KEY_LEFT
+#define KEY_GESTURE_RIGHT 					KEY_RIGHT
+#define KEY_GESTURE_O 						KEY_O
+#define KEY_GESTURE_E 						KEY_E
+#define KEY_GESTURE_M 						KEY_M
+#define KEY_GESTURE_L 						KEY_L
+#define KEY_GESTURE_W 						KEY_W
+#define KEY_GESTURE_S 						KEY_S
+#define KEY_GESTURE_V 						KEY_V
+#define KEY_GESTURE_Z 						KEY_Z
+
+#define GESTURE_LEFT						0x20
+#define GESTURE_RIGHT						0x21
+#define GESTURE_UP		    					0x22
+#define GESTURE_DOWN						0x23
+#define GESTURE_DOUBLECLICK				0x24
+#define GESTURE_O		    					0x30
+#define GESTURE_W		    					0x31
+#define GESTURE_M		    					0x32
+#define GESTURE_E		    					0x33
+#define GESTURE_C		    					0x34
+#define GESTURE_S		    					0x46
+#define GESTURE_V		    					0x54
+#define GESTURE_Z		    					0x65
+
+#define GTP_GESTURE_TPYE_STR  "RLUDKcemosvwz^"
+#define GTP_GLOVE_SUPPORT_ONOFF  'N'    // 'N' is off
+#define GTP_GESTURE_SUPPORT_ONOFF   'Y' // 'N' is off
+#define GTP_PROC_DRIVER_VERSION          "GTP_V1.0_20160706"
+#endif
+
+#define CTP_DEBUG_ON 1
 #define CTP_DEBUG_FUNC_ON 0
-#define CTP_INFO(fmt, arg...)           printk("FT5X06-TP-TAG INFO:"fmt"\n", ##arg)
+#define CTP_INFO(fmt,arg...)           printk("FT5X06-TP-TAG INFO:"fmt"\n",##arg)
 
-#define CTP_ERROR(fmt, arg...)          printk("FT5X06-TP-TAG ERROR:"fmt"\n", ##arg)
+#define CTP_ERROR(fmt,arg...)          printk("FT5X06-TP-TAG ERROR:"fmt"\n",##arg)
 
-#define CTP_DEBUG(fmt, arg...)          do {\
-	if (CTP_DEBUG_ON)\
-		printk("FT5X06-TP-TAG DEBUG:[%d]"fmt"\n", __LINE__, ##arg);\
-	} while (0)
-#define CTP_DEBUG_FUNC()               do {\
-	if (CTP_DEBUG_FUNC_ON)\
-		printk("FT5X06-TP-TAG Func:%s@Line:%d\n", __func__, __LINE__);\
-	} while (0)
+#define CTP_DEBUG(fmt,arg...)          do{\
+                                         if(CTP_DEBUG_ON)\
+                                         printk("FT5X06-TP-TAG DEBUG:[%d]"fmt"\n",__LINE__, ##arg);\
+                                       }while(0)
+#define CTP_DEBUG_FUNC()               do{\
+                                         if(CTP_DEBUG_FUNC_ON)\
+                                         printk("FT5X06-TP-TAG Func:%s@Line:%d\n",__func__,__LINE__);\
+                                       }while(0)
 
 
 #endif
