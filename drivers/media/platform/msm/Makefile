@@ -9,4 +9,5 @@ ifeq ($(CONFIG_MACH_XIAOMI_MARKW),y)
 obj-$(CONFIG_MSMB_CAMERA) += camera_v2_markw/
 else
 obj-$(CONFIG_MSMB_CAMERA) += camera_v2/
+endif
 obj-y += sde/
