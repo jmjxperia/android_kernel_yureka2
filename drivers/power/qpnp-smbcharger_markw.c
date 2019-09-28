@@ -6158,11 +6158,6 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				msecs_to_jiffies(HVDCP_NOTIFY_MS));
 	}
 
-#ifndef CONFIG_MACH_XIAOMI_MIDO
-	if (usb_supply_type != POWER_SUPPLY_TYPE_USB)
-		goto  skip_current_for_non_sdp;
-#endif
-
 	pr_smb(PR_MISC, "usb type = %s current_limit = %d\n",
 			usb_type_name, current_limit);
 
@@ -6170,11 +6165,6 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				current_limit);
 	if (rc < 0)
 		pr_err("Couldn't update USB PSY ICL vote rc=%d\n", rc);
-
-#ifndef CONFIG_MACH_XIAOMI_MIDO
-skip_current_for_non_sdp:
-	smbchg_vfloat_adjust_check(chip);
-#endif
 
 	power_supply_changed(&chip->batt_psy);
 }
@@ -6206,7 +6196,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_FLASH_ACTIVE,
 	POWER_SUPPLY_PROP_FLASH_TRIGGER,
 	POWER_SUPPLY_PROP_DP_DM,
-#ifndef NO_CHARGE_COUNTER	
+#ifndef NO_CHARGE_COUNTER
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 #endif
 	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED,
