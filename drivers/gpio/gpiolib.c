@@ -1017,12 +1017,13 @@ static int _gpiod_direction_output_raw(struct gpio_desc *desc, int value)
 		pr_debug("[GPIO]set GPIO_65 as irq output\n");
 	else {
 #endif
-		if (test_bit(FLAG_USED_AS_IRQ, &desc->flags)) {
+/*		if (test_bit(FLAG_USED_AS_IRQ, &desc->flags)) {
 			gpiod_err(desc,
 				 "%s: tried to set a GPIO tied to an IRQ as output\n",
 				 __func__);
 			return -EIO;
 		}
+*/
 #if defined(CONFIG_MACH_XIAOMI_C6) && defined(CONFIG_TOUCHSCREEN_GT9XX)
 	}
 #endif
