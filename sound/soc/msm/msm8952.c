@@ -78,6 +78,7 @@ static int mi2s_tx_sample_rate = SAMPLING_RATE_48KHZ;
 
 static atomic_t quat_mi2s_clk_ref;
 static atomic_t quin_mi2s_clk_ref;
+static atomic_t quin_mi2s_clk_smartpa;
 static atomic_t auxpcm_mi2s_clk_ref;
 
 static int msm8952_enable_dig_cdc_clk(struct snd_soc_codec *codec, int enable,
@@ -87,6 +88,7 @@ static int msm8952_mclk_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
 static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
+extern int msm_q6_quin_mi2s_clocks(bool enable);
 
 /*
  * Android L spec
@@ -100,20 +102,37 @@ static struct wcd_mbhc_config mbhc_cfg = {
 	.mono_stero_detection = false,
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = false,
-	.key_code[0] = KEY_MEDIA,
+#ifdef CONFIG_MACH_XIAOMI_MSM8953
 #ifdef CONFIG_MACH_XIAOMI_C6
+	.key_code[0] = KEY_MEDIA,
 	.key_code[1] = BTN_1,
 	.key_code[2] = BTN_2,
 	.key_code[3] = 0,
-#else
-	.key_code[1] = KEY_VOICECOMMAND,
-	.key_code[2] = KEY_VOLUMEUP,
-	.key_code[3] = KEY_VOLUMEDOWN,
-#endif
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
 	.key_code[7] = 0,
+#endif
+#ifdef CONFIG_MACH_XIAOMI_MARKW
+	.key_code[0] = KEY_MEDIA,
+    .key_code[1] = KEY_VOLUMEUP,
+	.key_code[2] = KEY_VOLUMEDOWN,
+	.key_code[3] = KEY_VOICECOMMAND,
+	.key_code[4] = 0,
+	.key_code[5] = 0,
+	.key_code[6] = 0,
+	.key_code[7] = 0,
+#endif
+#else
+	.key_code[0] = KEY_MEDIA,
+	.key_code[1] = KEY_VOICECOMMAND,
+	.key_code[2] = KEY_VOLUMEUP,
+	.key_code[3] = KEY_VOLUMEDOWN,
+	.key_code[4] = 0,
+	.key_code[5] = 0,
+	.key_code[6] = 0,
+	.key_code[7] = 0,
+#endif
 	.linein_th = 5000,
 };
 
@@ -1638,7 +1657,7 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 		return NULL;
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8952_wcd_cal)->X) = (Y))
-#ifdef CONFIG_MACH_XIAOMI_C6
+#if defined(CONFIG_MACH_XIAOMI_C6) || defined(CONFIG_MACH_XIAOMI_MARKW)
 	S(v_hs_max, 1600);
 #else
 	S(v_hs_max, 1500);
@@ -1665,6 +1684,7 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	 * 210-290 == Button 2
 	 * 360-680 == Button 3
 	 */
+#ifdef CONFIG_MACH_XIAOMI_MSM8953
 #ifdef CONFIG_MACH_XIAOMI_C6
 	btn_low[0] = 73;
 	btn_high[0] = 73;
@@ -1676,6 +1696,19 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	btn_high[3] = 438;
 	btn_low[4] = 438;
 	btn_high[4] = 438;
+#endif
+#ifdef CONFIG_MACH_XIAOMI_MARKW
+	btn_low[0] = 25;
+	btn_high[0] = 75;
+	btn_low[1] = 200;
+	btn_high[1] = 225;
+	btn_low[2] = 325;
+	btn_high[2] = 450;
+	btn_low[3] = 500;
+	btn_high[3] = 510;
+	btn_low[4] = 530;
+	btn_high[4] = 540;
+#endif
 #else
 	btn_low[0] = 75;
 	btn_high[0] = 75;
@@ -3381,6 +3414,7 @@ parse_mclk_freq:
 	atomic_set(&quat_mi2s_clk_ref, 0);
 	atomic_set(&quin_mi2s_clk_ref, 0);
 	atomic_set(&auxpcm_mi2s_clk_ref, 0);
+	atomic_set(&quin_mi2s_clk_smartpa, 0);
 
 	ret = snd_soc_of_parse_audio_routing(card,
 			"qcom,audio-routing");
@@ -3417,6 +3451,9 @@ err:
 		}
 	}
 err1:
+#ifdef CONFIG_MACH_XIAOMI_MARKW
+	snd_soc_card_set_drvdata(card, NULL);
+#endif
 	devm_kfree(&pdev->dev, pdata);
 	return ret;
 }
@@ -3463,16 +3500,120 @@ static struct platform_driver msm8952_asoc_machine_driver = {
 	.probe = msm8952_asoc_machine_probe,
 	.remove = msm8952_asoc_machine_remove,
 };
+/*----------audio bring up,zhangjianming2.wt start  --------*/
+#define LPASS_CSR_GP_IO_MUX_QUI_CTL 0x0c052000
+static int conf_int_codec_mux_quin(void){
+	int ret = 0;
+	int val = 0;
+	void __iomem *vaddr = NULL;
+	
+	vaddr = ioremap(LPASS_CSR_GP_IO_MUX_QUI_CTL , 4);	
+	if (!vaddr) {		pr_err("%s ioremap failure for addr %x",
+		__func__, LPASS_CSR_GP_IO_MUX_QUI_CTL);
+	return -ENOMEM;	}
+	/* enable quin MI2S interface to TLMM GPIO */
+	val = ioread32(vaddr);
+	val = val | 0x00000001;
+	pr_debug("%s: quin mux val = %x\n", __func__, val);
+	iowrite32(val, vaddr);
+	iounmap(vaddr);
+	return ret;
+}
+
+
+static ssize_t SmartPa_Ctlt_show(struct device_driver *driver, char *buf) 
+{
+	return sprintf(buf,"%s\n","this is extern smart PA ctl"); 
+}
+
+static ssize_t SmartPa_Ctl_store(struct device_driver *driver, const char *buf, size_t count)
+{
+	int SmartPa_Ctl=0;
+	int ret=0;
+	SmartPa_Ctl = simple_strtol(buf,NULL,10);
+	if(SmartPa_Ctl){
+		 if (atomic_inc_return(&quin_mi2s_clk_smartpa)==1)
+		 {
+		   	pr_err("%s: enable clk quin_mi2s_clk_smartpa= %d\n", __func__,atomic_read(&quin_mi2s_clk_smartpa));
+		   	conf_int_codec_mux_quin();
+		   	mi2s_rx_clk.enable = true;
+		   	mi2s_rx_clk.clk_id =Q6AFE_LPASS_CLK_ID_QUI_MI2S_IBIT;
+		   	mi2s_rx_clk.clk_freq_in_hz =Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+		   	ret = afe_set_lpass_clock_v2(AFE_PORT_ID_QUINARY_MI2S_RX,&mi2s_rx_clk);
+		  	if (ret < 0) {
+				pr_err("failed to enable sclk\n");
+				
+		  	}
+			ret = msm_gpioset_activate(CLIENT_WCD_INT, "quin_i2s");
+			if (ret < 0) {
+				   pr_err("failed to enable codec gpios\n");
+				
+			}	
+		 	 ret = msm_q6_quin_mi2s_clocks(1);
+		  	if (ret < 0){
+			  	pr_err("%s: set fmt cpu dai failed\n", __func__);  
+				
+			}
+		 }else{
+			pr_err("%s: can bot enable clk quin_mi2s_clk_smartpa= %d\n", __func__,atomic_read(&quin_mi2s_clk_smartpa));		
+		 }	
+	}else{
+  		if(atomic_read(&quin_mi2s_clk_smartpa)>0){
+		 	pr_err("%s:  close clk quin_mi2s_clk_smartpa %d\n", __func__,atomic_read(&quin_mi2s_clk_smartpa));
+			 atomic_dec_return(&quin_mi2s_clk_smartpa);
+			ret = msm_gpioset_suspend(CLIENT_WCD_INT, "quin_i2s");
+			if (ret < 0) {
+				pr_err("failed to disable codec gpios\n");
+				
+			}
+			mi2s_rx_clk.enable = false;
+			mi2s_rx_clk.clk_id =Q6AFE_LPASS_CLK_ID_QUI_MI2S_IBIT;
+			ret = afe_set_lpass_clock_v2(AFE_PORT_ID_QUINARY_MI2S_RX,&mi2s_rx_clk);
+			if (ret < 0) {
+				pr_err("failed to enable sclk\n");
+				
+			}		
+			ret = msm_q6_quin_mi2s_clocks(0);
+			if (ret < 0){
+				pr_err("%s: msm_q6_quin_mi2s_clocks failed\n", __func__);
+				
+				}
+  			}
+	}
+
+	return count;
+}
+
+static DRIVER_ATTR(SmartPa_Ctl,(S_IRUSR | S_IWUSR |S_IRGRP  |S_IROTH ),SmartPa_Ctlt_show,SmartPa_Ctl_store);
+/*----------audio bring up,zhangjianming2.wt           end --------*/
+
 
 static int __init msm8952_machine_init(void)
 {
-	return platform_driver_register(&msm8952_asoc_machine_driver);
+      int ret=0;
+	  /*----------audio bring up,zhangjianming2.wt           start --------*/
+       ret=platform_driver_register(&msm8952_asoc_machine_driver);
+		if(ret<0){
+		pr_err("%s:platform_driver_register  msm8952_asoc_machine_driver failed \n",__func__);
+		return ret;
+	}   
+	  
+	ret=driver_create_file(&msm8952_asoc_machine_driver.driver,&driver_attr_SmartPa_Ctl); 
+	if(ret<0){
+		pr_err("%s:driver_create_file Speaker_Ctl failed \n",__func__);
+		return ret;
+	}
+	return ret;
+	/*----------audio bring up,zhangjianming2.wt           end --------*/
 }
 late_initcall(msm8952_machine_init);
 
 static void __exit msm8952_machine_exit(void)
 {
-	return platform_driver_unregister(&msm8952_asoc_machine_driver);
+	platform_driver_unregister(&msm8952_asoc_machine_driver);
+	/*----------audio bring up,zhangjianming2.wt            --------*/
+	driver_remove_file(&msm8952_asoc_machine_driver.driver,&driver_attr_SmartPa_Ctl);
+	return;
 }
 module_exit(msm8952_machine_exit);
 

@@ -7,3 +7,5 @@ if MACH_XIAOMI_C6
 source "drivers/input/fingerprint/goodix_mido/Kconfig"
 source "drivers/input/fingerprint/fpc_mido/Kconfig"
 endif
+source "drivers/input/fingerprint/goodix_markw/Kconfig"
+source "drivers/input/fingerprint/fpc_markw/Kconfig"
