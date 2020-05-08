@@ -60,7 +60,6 @@ obj-$(CONFIG_POWER_AVS)		+= avs/
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_SMB349_USB_CHARGER)   += smb349-charger.o
 obj-$(CONFIG_SMB349_DUAL_CHARGER)   += smb349-dual-charger.o
-obj-$(CONFIG_SMB1351_USB_CHARGER) += smb1351-charger.o
 obj-$(CONFIG_SMB350_CHARGER)   += smb350_charger.o
 obj-$(CONFIG_SMB135X_CHARGER)   += smb135x-charger.o
 obj-$(CONFIG_SMB1360_CHARGER_FG) += smb1360-charger-fg.o
@@ -73,9 +72,11 @@ obj-$(CONFIG_QPNP_VM_BMS)	+= qpnp-vm-bms.o batterydata-lib.o batterydata-interfa
 ifeq ($(CONFIG_MACH_XIAOMI_MARKW),y)
 obj-$(CONFIG_QPNP_FG)		+= qpnp-fg_markw.o
 obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger_markw.o pmic-voter.o
+obj-$(CONFIG_SMB1351_USB_CHARGER) += smb1351-charger_markw.o
 else
 obj-$(CONFIG_QPNP_FG)		+= qpnp-fg.o
 obj-$(CONFIG_QPNP_SMBCHARGER)	+= qpnp-smbcharger.o pmic-voter.o
+obj-$(CONFIG_SMB1351_USB_CHARGER) += smb1351-charger.o
 endif
 obj-$(CONFIG_QPNP_FG_GEN3)	+= qpnp-fg-gen3.o fg-memif.o fg-util.o pmic-voter.o
 obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
