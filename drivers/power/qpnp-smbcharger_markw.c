@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2018 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -417,9 +417,6 @@ enum wake_reason {
 #define	HVDCP_OTG_VOTER			"HVDCP_OTG_VOTER"
 #define	HVDCP_PULSING_VOTER		"HVDCP_PULSING_VOTER"
 
-/* fg cc workaround */
-#define NO_CHARGE_COUNTER
-
 static int smbchg_debug_mask;
 module_param_named(
 	debug_mask, smbchg_debug_mask, int, S_IRUSR | S_IWUSR
@@ -454,7 +451,7 @@ module_param_named(
 	int, S_IRUSR | S_IWUSR
 );
 
-static int smbchg_default_dcp_icl_ma = 2000;
+static int smbchg_default_dcp_icl_ma = 1800;
 module_param_named(
 	default_dcp_icl_ma, smbchg_default_dcp_icl_ma,
 	int, S_IRUSR | S_IWUSR
@@ -1077,19 +1074,6 @@ static int get_prop_batt_capacity(struct smbchg_chip *chip)
 		capacity = DEFAULT_BATT_CAPACITY;
 	}
 	return capacity;
-}
-
-static int get_prop_battery_charge_full_design(struct smbchg_chip *chip)
-{
-	union power_supply_propval ret = {0,};
-		if (chip->bms_psy) {
-			chip->bms_psy->get_property(chip->bms_psy,
-				  POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &ret);
-			return ret.intval;
-		} else {
-			pr_debug("No BMS supply registered return 0\n");
-		}
-		return 0;
 }
 
 #define DEFAULT_BATT_TEMP		200
@@ -2292,7 +2276,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip,
 		return;
 	}
 	power_supply_set_voltage_limit(chip->usb_psy,
-	             (chip->vfloat_mv + 50) * 1000);
+			(chip->vfloat_mv + 50) * 1000);
 	/* Set USB ICL */
 	target_icl_ma = get_effective_result_locked(chip->usb_icl_votable);
 	if (target_icl_ma < 0) {
@@ -3370,6 +3354,7 @@ static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 		power_supply_set_voltage_limit(chip->usb_psy,
 				chip->vfloat_mv * 1000);
 	}
+
 	return rc;
 }
 
@@ -4922,26 +4907,10 @@ static int smbchg_restricted_charging(struct smbchg_chip *chip, bool enable)
 	return rc;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-extern void ist30xx_set_ta_mode(bool mode);
-extern void tpd_usb_plugin(bool mode);
-extern void gtp_usb_plugin(bool mode);
-int set_usb_charge_mode_par = 0;
-#endif
-
 static void handle_usb_removal(struct smbchg_chip *chip)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
 	int rc;
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	if (set_usb_charge_mode_par == 1) {
-		ist30xx_set_ta_mode(0);
-	} else if (set_usb_charge_mode_par == 2) {
-		tpd_usb_plugin(0);
-	} else if (set_usb_charge_mode_par == 3) {
-		gtp_usb_plugin(0);
-	}
-#endif
 
 	pr_smb(PR_STATUS, "triggered\n");
 	smbchg_aicl_deglitch_wa_check(chip);
@@ -5012,9 +4981,6 @@ static bool is_usbin_uv_high(struct smbchg_chip *chip)
 	return reg &= USBIN_UV_BIT;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-static int rerun_apsd(struct smbchg_chip *chip);
-#endif
 #define HVDCP_NOTIFY_MS		2500
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
@@ -5022,24 +4988,9 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	int rc;
 	char *usb_type_name = "null";
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	if (set_usb_charge_mode_par == 1) {
-		ist30xx_set_ta_mode(1);
-	} else if (set_usb_charge_mode_par == 2) {
-		tpd_usb_plugin(1);
-	} else if (set_usb_charge_mode_par == 3) {
-		gtp_usb_plugin(1);
-	}
-#endif
 	pr_smb(PR_STATUS, "triggered\n");
 	/* usb inserted */
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_CDP || usb_supply_type == POWER_SUPPLY_TYPE_USB) {
-		rc = rerun_apsd(chip);
-		read_usb_type(chip, &usb_type_name, &usb_supply_type);
-	}
-#endif
 	pr_smb(PR_STATUS,
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
 
@@ -5285,7 +5236,7 @@ static void increment_aicl_count(struct smbchg_chip *chip)
 
 static int wait_for_usbin_uv(struct smbchg_chip *chip, bool high)
 {
-	int rc;
+	int rc = 0;
 	int tries = 3;
 	struct completion *completion = &chip->usbin_uv_lowered;
 	bool usbin_uv;
@@ -5315,7 +5266,7 @@ static int wait_for_usbin_uv(struct smbchg_chip *chip, bool high)
 
 static int wait_for_src_detect(struct smbchg_chip *chip, bool high)
 {
-	int rc;
+	int rc = 0;
 	int tries = 3;
 	struct completion *completion = &chip->src_det_lowered;
 	bool src_detect;
@@ -5795,7 +5746,7 @@ static int smbchg_prepare_for_pulsing_lite(struct smbchg_chip *chip)
 	/* re-run APSD */
 	rc = rerun_apsd(chip);
 	if (rc) {
-		pr_err("APSD rerun failed rc=%d\n", rc);
+		pr_err("APSD rerun failed\n");
 		goto out;
 	}
 
@@ -6171,6 +6122,9 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				msecs_to_jiffies(HVDCP_NOTIFY_MS));
 	}
 
+	if (usb_supply_type != POWER_SUPPLY_TYPE_USB)
+		goto  skip_current_for_non_sdp;
+
 	pr_smb(PR_MISC, "usb type = %s current_limit = %d\n",
 			usb_type_name, current_limit);
 
@@ -6178,6 +6132,9 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 				current_limit);
 	if (rc < 0)
 		pr_err("Couldn't update USB PSY ICL vote rc=%d\n", rc);
+
+skip_current_for_non_sdp:
+	smbchg_vfloat_adjust_check(chip);
 
 	power_supply_changed(&chip->batt_psy);
 }
@@ -6189,7 +6146,6 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_CAPACITY,
-	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
 	POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL,
@@ -6210,9 +6166,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_FLASH_ACTIVE,
 	POWER_SUPPLY_PROP_FLASH_TRIGGER,
 	POWER_SUPPLY_PROP_DP_DM,
-#ifndef NO_CHARGE_COUNTER
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
-#endif
 	POWER_SUPPLY_PROP_INPUT_CURRENT_LIMITED,
 	POWER_SUPPLY_PROP_RERUN_AICL,
 	POWER_SUPPLY_PROP_RESTRICTED_CHARGING,
@@ -6239,7 +6193,6 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		rc = vote(chip->dc_suspend_votable, USER_EN_VOTER,
 				!val->intval, 0);
 		chip->chg_enabled = val->intval;
-		power_supply_changed(chip->usb_psy);
 		schedule_work(&chip->usb_set_online_work);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
@@ -6373,11 +6326,7 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = get_prop_batt_health(chip);
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-		val->intval = POWER_SUPPLY_TECHNOLOGY_LIPO;
-#else
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
-#endif
 		break;
 	case POWER_SUPPLY_PROP_FLASH_CURRENT_MAX:
 		val->intval = smbchg_calc_max_flash_current(chip);
@@ -6401,11 +6350,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = get_prop_batt_capacity(chip);
 		break;
-	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = get_prop_battery_charge_full_design(chip);
-		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		val->intval = get_prop_batt_current_now(chip);
+		val->intval *= (-1);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 		val->intval = get_prop_batt_voltage_now(chip);
@@ -6592,16 +6539,6 @@ static irqreturn_t batt_warm_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	int rc;
-	/* set the warm float voltage compensation,set the warm float voltage to 4.1V */
-	if (chip->float_voltage_comp != -EINVAL) {
-		rc = smbchg_float_voltage_comp_set(chip, chip->float_voltage_comp);
-	if (rc < 0)
-		dev_err(chip->dev, "Couldn't set float voltage comp rc = %d\n", rc);
-	pr_smb(PR_STATUS, "set float voltage comp to %d\n", chip->float_voltage_comp);
-}
-#endif
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_warm = !!(reg & HOT_BAT_SOFT_BIT);
@@ -6618,15 +6555,6 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
 	u8 reg = 0;
-
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	int rc;
-	/* set the cool float voltage compensation ,set the cool float voltage to 4.4V*/
-	rc = smbchg_float_voltage_comp_set(chip, 0);
-	if (rc < 0)
-		dev_err(chip->dev, "Couldn't set float voltage comp rc = %d\n", rc);
-#endif
-
 
 	smbchg_read(chip, &reg, chip->bat_if_base + RT_STS, 1);
 	chip->batt_cool = !!(reg & COLD_BAT_SOFT_BIT);
@@ -7692,21 +7620,6 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		if (rc < 0)
 			dev_err(chip->dev, "Couldn't set OTG OC config rc = %d\n",
 				rc);
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-		rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG, 0x0c, 0x8);
-		if (rc < 0) {
-			dev_err(chip->dev, "Couldn't set SMBCHGL_OTG_CFG rc=%d\n",
-				rc);
-		}
-
-		rc = smbchg_read(chip, &reg, chip->otg_base + OTG_CFG, 1);
-		printk("%s:read OTG_CFG=%2x\n", __func__, reg);
-		if (rc < 0) {
-			dev_err(chip->dev, "Couldn't set SMBCHGL_OTG_CFG rc=%d\n",
-				rc);
-		}
-#endif
-
 	}
 
 	if (chip->otg_pinctrl) {
@@ -8697,9 +8610,6 @@ static int smbchg_probe(struct spmi_device *spmi)
 		goto votables_cleanup;
 	}
 
-#ifdef CONFIG_MACH_XIAOMI_MIDO
-	chip->hvdcp_not_supported = true;
-#endif
 	rc = smbchg_check_chg_version(chip);
 	if (rc) {
 		pr_err("Unable to check schg version rc=%d\n", rc);
@@ -8824,7 +8734,6 @@ unregister_batt_psy:
 	power_supply_unregister(&chip->batt_psy);
 out:
 	handle_usb_removal(chip);
-	return rc;
 votables_cleanup:
 	if (chip->aicl_deglitch_short_votable)
 		destroy_votable(chip->aicl_deglitch_short_votable);
@@ -8909,11 +8818,9 @@ static void smbchg_shutdown(struct spmi_device *spmi)
 	disable_irq(chip->otg_oc_irq);
 	disable_irq(chip->power_ok_irq);
 	disable_irq(chip->recharge_irq);
-	disable_irq(chip->src_detect_irq);
 	disable_irq(chip->taper_irq);
 	disable_irq(chip->usbid_change_irq);
 	disable_irq(chip->usbin_ov_irq);
-	disable_irq(chip->usbin_uv_irq);
 	disable_irq(chip->vbat_low_irq);
 	disable_irq(chip->wdog_timeout_irq);
 
@@ -8974,6 +8881,9 @@ static void smbchg_shutdown(struct spmi_device *spmi)
 	rc = fake_insertion_removal(chip, true);
 	if (rc < 0)
 		pr_err("Couldn't fake insertion rc=%d\n", rc);
+
+	disable_irq(chip->src_detect_irq);
+	disable_irq(chip->usbin_uv_irq);
 
 	pr_smb(PR_MISC, "Wait 1S to settle\n");
 	msleep(1000);
